@@ -59,7 +59,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'psas') {
     <main>
         <section>
             <h2>Admin Management & Stub Issuance</h2>
-            <p>Dito naman ang portal para sa PSAS Admin upang mag-issue ng stub batches, mag-check ng discrepancies, at mag-generate ng reports.</p>
+            <p>This portal allows PSAS Admins to issue stub batches, verify attendance logs, and manage distributions.</p>
         </section>
     </main>
 

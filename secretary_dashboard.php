@@ -59,7 +59,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'secretary') {
     <main>
         <section>
             <h2>Attendance & Stub Request Dashboard</h2>
-            <p>Dito mo ilalagay Kyle ang UI para sa pag-encode ng daily attendance at pag-request ng meal stubs.</p>
+            <p>This is where u will build(kyle) the UI for daily attendance encoding and stub requests.</p>
         </section>
     </main>
 

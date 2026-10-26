@@ -3,7 +3,7 @@
 require_once 'db.php';
 
 try {
-    // Paglikha ng mga kinakailangang talahanayan (tables)
+    // Create required database table (tables)
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS courses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
