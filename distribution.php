@@ -14,20 +14,17 @@ $sql = "SELECT
         LEFT JOIN attendance_reports ar ON sb.attendance_report_id = ar.id
         ORDER BY ms.id ASC";
 
-$stmt = $pdo->prepare($sql);
-$stmt->execute();
-$stubs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$stmt =$pdo->prepare($sql);$stmt->execute();
+$stubs =$stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Kalkulahin ang stats para sa Progress Header
-$totalStubs = count($stubs);
-$distributedCount = 0;
-foreach ($stubs as $s) {
-    if ($s['status'] === 'Distributed') {
-        $distributedCount++;
+$totalStubs = count($stubs);$distributedCount = 0;
+foreach ($stubs as$s) {
+    if ($s['status'] === 'Distributed') {$distributedCount++;
     }
 }
-$remainingCount = $totalStubs - $distributedCount;
-$progressPercent = $totalStubs > 0 ? ($distributedCount / $totalStubs) * 100 : 0;
+$remainingCount = $totalStubs -$distributedCount;
+$progressPercent =$totalStubs > 0 ? ($distributedCount / $totalStubs) * 100 : 0;
 ?>
 
 <!DOCTYPE html>
@@ -63,7 +60,6 @@ $progressPercent = $totalStubs > 0 ? ($distributedCount / $totalStubs) * 100 : 0
         .progress-bar-fill {
             background: var(--accent-yellow);
             height: 100%;
-            width: <?= $progressPercent ?>%;
             transition: width 0.4s ease;
         }
         .search-filter-container {
@@ -172,7 +168,7 @@ $progressPercent = $totalStubs > 0 ? ($distributedCount / $totalStubs) * 100 : 0
                 </div>
             </div>
             <div class="progress-bar-bg">
-                <div class="progress-bar-fill"></div>
+                <div class="progress-bar-fill" style="width: <?= $progressPercent ?>%;"></div>
             </div>
         </div>
 
@@ -189,68 +185,51 @@ $progressPercent = $totalStubs > 0 ? ($distributedCount / $totalStubs) * 100 : 0
         <!-- Dynamic Stub List (Responsive & Interactive Cards) -->
         <div class="stub-list" id="stubListContainer">
             <?php if (count($stubs) > 0): ?>
-                <?php foreach ($stubs as $stub): ?>
-                    <div class="stub-item-card" data-status="<?= $stub['status'] ?>" data-search="<?= strtolower($stub['stub_code'] . ' ' . $stub['course'] . ' ' . $stub['section_name']) ?>">
+                <?php foreach ($stubs as$stub): ?>
+                    <div class="stub-item-card" data-status="<?= $stub['status'] ?>" data-search="<?= strtolower($stub['stub_code'] . ' ' . $stub['course'] . ' ' .$stub['section_name']) ?>">
                         <div class="stub-info">
                             <h4><?= htmlspecialchars($stub['stub_code']) ?></h4>
-                            <p><?= htmlspecialchars($stub['course'] ?? 'N/A') ?> · Year <?= htmlspecialchars($stub['year_level'] ?? 'N/A') ?> · Section <?= htmlspecialchars($stub['section_name'] ?? 'N/A') ?></p>
+                            <p><?= htmlspecialchars($stub['course'] ?? 'N/A') ?> · Year <?= htmlspecialchars($stub['year_level'] ?? 'N/A') ?> · <?= htmlspecialchars($stub['section_name'] ?? 'N/A') ?></p>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <span class="status-badge <?= strtolower($stub['status']) ?>" id="status-text-<?= (int)$stub['id'] ?>">
-                                <?= htmlspecialchars($stub['status']) ?>
-                            </span>
-                            
-                            <?php if ($stub['status'] === 'Unclaimed'): ?>
-                                <button class="btn-primary distribute-btn" data-stub-id="<?= (int)$stub['id'] ?>" style="padding: 6px 12px; font-size: 12px; width: auto;">
-                                    Mark as Distributed
-                                </button>
-                            <?php else: ?>
-                                <button disabled style="background: #E2E8F0; color: #94A3B8; border: none; padding: 6px 12px; border-radius: 8px; font-size: 12px; cursor: not-allowed;">
-                                    Done
-                                </button>
-                            <?php endif; ?>
-                        </div>
+                        <span class="status-badge <?= strtolower($stub['status']) === 'distributed' ? 'distributed' : 'unclaimed' ?>"><?= htmlspecialchars($stub['status']) ?></span>
                     </div>
                 <?php endforeach; ?>
             <?php else: ?>
-                <div class="card" style="text-align: center; color: var(--text-muted);">No meal stubs available.</div>
+                <div class="stub-item-card" style="justify-content: center; color: var(--text-muted);">
+                    No stubs found.
+                </div>
             <?php endif; ?>
         </div>
-
     </main>
 
-    <!-- JavaScript para sa Real-time Search, Filtering, at AJAX Request -->
-    <script src="distribution.js"></script>
     <script>
-        // Client-side Search Logic
-        document.getElementById('searchInput').addEventListener('input', function(e) {
-            let term = e.target.value.toLowerCase();
-            let cards = document.querySelectorAll('.stub-item-card');
-            cards.forEach(card => {
-                let text = card.getAttribute('data-search');
-                if (text.includes(term)) {
-                    card.style.display = 'flex';
-                } else {
-                    card.style.display = 'none';
-                }
+        const searchInput = document.getElementById('searchInput');
+        const stubListContainer = document.getElementById('stubListContainer');
+        let currentFilter = 'all';
+
+        function filterStubs(status, button) {
+            currentFilter = status;
+            document.querySelectorAll('.pill').forEach((pill) => pill.classList.remove('active'));
+            button.classList.add('active');
+            const cards = stubListContainer.querySelectorAll('.stub-item-card');
+            cards.forEach((card) => {
+                const matches = (status === 'all' || card.dataset.status === status);
+                card.style.display = matches ? 'flex' : 'none';
             });
-        });
+            applySearch();
+        }
 
-        // Filter Pills Logic
-        function filterStubs(status, btn) {
-            document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
-            btn.classList.add('active');
-
-            let cards = document.querySelectorAll('.stub-item-card');
-            cards.forEach(card => {
-                let cardStatus = card.getAttribute('data-status');
-                if (status === 'all' || cardStatus === status) {
-                    card.style.display = 'flex';
-                } else {
-                    card.style.display = 'none';
-                }
+        function applySearch() {
+            const query = searchInput.value.trim().toLowerCase();
+            const cards = stubListContainer.querySelectorAll('.stub-item-card');
+            cards.forEach((card) => {
+                const matchesQuery = !query || card.dataset.search.includes(query);
+                const matchesStatus = currentFilter === 'all' || card.dataset.status === currentFilter;
+                card.style.display = matchesQuery && matchesStatus ? 'flex' : 'none';
             });
         }
+
+        searchInput.addEventListener('input', applySearch);
     </script>
 </body>
 </html>

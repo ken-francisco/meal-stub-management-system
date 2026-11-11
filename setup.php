@@ -40,7 +40,7 @@ try {
             FOREIGN KEY (year_id) REFERENCES year_levels(id)
         );
 
-        -- 5. ATTENDANCE REPORTS TABLE
+        -- 5. ATTENDANCE REPORTS TABLE (Includes absent_count)
         CREATE TABLE IF NOT EXISTS attendance_reports (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             secretary_id INTEGER NOT NULL,
@@ -49,6 +49,7 @@ try {
             section TEXT NOT NULL,
             report_date TEXT NOT NULL,
             present_count INTEGER NOT NULL CHECK (present_count >= 0),
+            absent_count INTEGER NOT NULL CHECK (absent_count >= 0),
             status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
             remarks TEXT,
             reviewed_by INTEGER,
@@ -86,6 +87,19 @@ try {
         );
     ");
 
+    // Safe migration: Check if absent_count column exists in existing attendance_reports table, if not, add it
+    $columns = $pdo->query("PRAGMA table_info(attendance_reports)")->fetchAll(PDO::FETCH_ASSOC);
+    $hasAbsentCount = false;
+    foreach ($columns as $col) {
+        if ($col['name'] === 'absent_count') {
+            $hasAbsentCount = true;
+            break;
+        }
+    }
+    if (!$hasAbsentCount) {
+        $pdo->exec("ALTER TABLE attendance_reports ADD COLUMN absent_count INTEGER NOT NULL DEFAULT 0;");
+    }
+
     // Create default test accounts if users table is empty
     $userCount = (int) $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
     if ($userCount === 0) {
@@ -98,15 +112,12 @@ try {
     // Insert sample test data for distribution if meal_stubs is empty
     $stubCount = (int) $pdo->query("SELECT COUNT(*) FROM meal_stubs")->fetchColumn();
     if ($stubCount === 0) {
-        // 1. Insert sample attendance report
-        $pdo->exec("INSERT INTO attendance_reports (secretary_id, course, year_level, section, report_date, present_count, status) 
-                    VALUES (1, 'BSIS', 2, '2A', '2026-11-11', 35, 'approved')");
+        $pdo->exec("INSERT INTO attendance_reports (secretary_id, course, year_level, section, report_date, present_count, absent_count, status) 
+                    VALUES (1, 'BSIS', 2, '2A', '2026-11-11', 35, 1, 'approved')");
         
-        // 2. Insert sample stub batch
         $pdo->exec("INSERT INTO stub_batches (attendance_report_id, psas_staff_id, stubs_issued, issue_date, status) 
                     VALUES (1, 2, 3, '2026-11-11', 'issued')");
 
-        // 3. Insert sample meal stubs
         $pdo->exec("INSERT INTO meal_stubs (batch_id, stub_code, status) VALUES 
                     (1, 'STUB-BSIS-2A-001', 'Unclaimed'),
                     (1, 'STUB-BSIS-2A-002', 'Unclaimed'),
@@ -114,7 +125,7 @@ try {
     }
 
     echo "<h3>Database setup & sample seeding complete!</h3>";
-    echo "<p>Test stubs have been successfully added.</p>";
+    echo "<p>Test stubs and absent count column are fully updated and ready.</p>";
 
 } catch (PDOException $e) {
     http_response_code(500);
