@@ -3,11 +3,11 @@
 require_once __DIR__ . '/db.php';
 
 try {
-    // Patakbuhin ang paglikha ng mga tables na tugma sa lahat ng modules
+    // Execute table creation compatible with all modules
     $pdo->exec("
         PRAGMA foreign_keys = ON;
 
-        -- 1. USERS TABLE (Sinusuportahan ang full_name para sa API at authentication)
+        -- 1. USERS TABLE (Supports full_name for API and authentication)
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             full_name TEXT NOT NULL,
@@ -24,7 +24,7 @@ try {
             course_name TEXT NOT NULL
         );
 
-        -- 3. ATTENDANCE REPORTS TABLE (Tugma sa code at API ng Attendance module)
+        -- 3. ATTENDANCE REPORTS TABLE (Compatible with Attendance module code and API)
         CREATE TABLE IF NOT EXISTS attendance_reports (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             secretary_id INTEGER NOT NULL,
@@ -44,7 +44,7 @@ try {
             FOREIGN KEY (reviewed_by) REFERENCES users(id)
         );
 
-        -- 4. STUB BATCHES TABLE (Module para sa PSAS Stub Generator)
+        -- 4. STUB BATCHES TABLE (Module for PSAS Stub Generator)
         CREATE TABLE IF NOT EXISTS stub_batches (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             attendance_report_id INTEGER NOT NULL UNIQUE,
@@ -70,7 +70,7 @@ try {
         );
     ");
 
-    // Lumikha ng default test accounts kung wala pang laman ang users table
+    // Create default test accounts if the users table is empty
     $userCount = (int) $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
 
     if ($userCount === 0) {
@@ -86,7 +86,7 @@ try {
     }
 
     echo "<h3>Database setup complete!</h3>";
-    echo "<p>Lahat ng tables at columns ay matagumpay na naitayo.</p>";
+    echo "<p>All tables and columns have been successfully created.</p>";
     echo "<p>Test accounts — <b>secretary</b> / <b>psas</b> (Password: <b>123456</b>).</p>";
 
 } catch (PDOException $e) {
