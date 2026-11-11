@@ -1,10 +1,19 @@
 <?php
 // secretary_dashboard.php
-session_start();
+require_once __DIR__ . '/db.php';
 
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'secretary') {
-    header("Location: login.php");
-    exit();
+// Kunin ang latest total enrollees at stats mula sa SQLite DB
+$totalEnrollees = 36; // Default demo value
+$todayPresent = null; // Set to null if not submitted yet
+
+// Check if attendance report exists for today
+$today = date('Y-m-d');
+$stmt = $pdo->prepare("SELECT present_count, status FROM attendance_reports WHERE report_date = ? LIMIT 1");
+$stmt->execute([$today]);
+$report = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if ($report) {
+    $todayPresent = $report['present_count'];
 }
 ?>
 <!DOCTYPE html>
@@ -12,55 +21,81 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'secretary') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secretary Dashboard - Meal Stub System</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f0f2f5;
-            margin: 0;
-            padding: 20px;
-        }
-        header {
-            background-color: #003366; /* Royal Blue */
-            color: #FFCC00; /* Yellow */
-            padding: 15px 20px;
-            border-radius: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .logout-btn {
-            background-color: #dc3545;
-            color: white;
-            padding: 8px 12px;
-            text-decoration: none;
-            border-radius: 4px;
-            font-weight: bold;
-        }
-        main {
-            background: white;
-            padding: 20px;
-            margin-top: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-    </style>
+    <title>Secretary Dashboard - LVCC Meal Stub System</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <header>
-        <h1>Secretary Portal</h1>
-        <div>
-            <span>Welcome, <strong><?= htmlspecialchars($_SESSION['name']); ?></strong>!</span> | 
-            <a href="logout.php" class="logout-btn">Logout</a>
+    <!-- Header Navigation Bar -->
+    <nav class="navbar">
+        <div class="brand">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+            <span>LVCC <small style="font-weight: normal; color: #64748B;">Meal Stub System</small></span>
         </div>
-    </header>
+        <div class="avatar-chip">MS</div>
+    </nav>
 
-    <main>
-        <section>
-            <h2>Attendance & Stub Request Dashboard</h2>
-            <p>This is where u will build(kyle) the UI for daily attendance encoding and stub requests.</p>
-        </section>
+    <main class="app-container">
+        
+        <!-- User Welcome Section -->
+        <header class="page-header">
+            <span class="role-tag">BSIS · SECTION 3A</span>
+            <h1 class="greeting">Good morning, Maria</h1>
+            <p class="subtext">Here's your section's meal program status for today.</p>
+        </header>
+
+        <!-- Main Action CTA -->
+        <div style="margin-bottom: 20px;">
+            <a href="attendance_form.php" class="btn-primary">
+                <span>+</span> Record attendance
+            </a>
+        </div>
+
+        <!-- Alert Notification Card -->
+        <?php if ($todayPresent === null): ?>
+        <div class="card alert-card-warning">
+            <div style="display: flex; gap: 12px; align-items: flex-start;">
+                <span style="font-size: 20px;">⏱️</span>
+                <div>
+                    <strong style="color: #92400E; font-size: 15px;">Today's attendance is awaiting submission</strong>
+                    <p style="font-size: 13px; color: #B45309; margin-top: 4px;">Submit your class attendance before 9:30 AM to receive meal stubs on time.</p>
+                    <a href="attendance_form.php" class="btn-link">Submit now &rsaquo;</a>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- Stat Card 1: Total Enrollees -->
+        <div class="card metric-card">
+            <div class="metric-icon">👥</div>
+            <div>
+                <span class="subtext">Total class enrollees</span>
+                <div class="metric-value"><?= $totalEnrollees ?></div>
+                <span style="font-size: 12px; color: #94A3B8;">BSIS 3A · AY 2025–26</span>
+            </div>
+        </div>
+
+        <!-- Stat Card 2: Today's Present Count -->
+        <div class="card metric-card">
+            <div class="metric-icon" style="background: #FEF3C7; color: #D97706;">📋</div>
+            <div>
+                <span class="subtext">Today's present count</span>
+                <div class="metric-value">
+                    <?= $todayPresent !== null ? htmlspecialchars($todayPresent) : '—' ?>
+                </div>
+                <span style="font-size: 12px; color: #94A3B8;">
+                    <?= $todayPresent !== null ? 'Submitted for verification' : 'Not submitted yet' ?>
+                </span>
+            </div>
+        </div>
+
+        <!-- Quick Access to Distribution Module -->
+        <div class="card" style="margin-top: 24px;">
+            <h3 style="font-size: 16px; color: var(--primary-blue); margin-bottom: 6px;">Stub Distribution</h3>
+            <p class="subtext" style="margin-bottom: 14px;">Monitor and toggle student meal stub distribution status.</p>
+            <a href="distribution.php" class="btn-primary" style="background: #3B82F6;">View Distribution List</a>
+        </div>
+
     </main>
 
 </body>

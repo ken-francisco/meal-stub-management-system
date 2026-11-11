@@ -7,7 +7,7 @@ try {
     $pdo->exec("
         PRAGMA foreign_keys = ON;
 
-        -- 1. USERS TABLE (Supports full_name for API and authentication)
+        -- 1. USERS TABLE
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             full_name TEXT NOT NULL,
@@ -24,7 +24,23 @@ try {
             course_name TEXT NOT NULL
         );
 
-        -- 3. ATTENDANCE REPORTS TABLE (Compatible with Attendance module code and API)
+        -- 3. YEAR LEVELS TABLE
+        CREATE TABLE IF NOT EXISTS year_levels (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            year_level TEXT NOT NULL
+        );
+
+        -- 4. SECTIONS TABLE
+        CREATE TABLE IF NOT EXISTS sections (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            section_name TEXT NOT NULL,
+            course_id INTEGER,
+            year_id INTEGER,
+            FOREIGN KEY (course_id) REFERENCES courses(id),
+            FOREIGN KEY (year_id) REFERENCES year_levels(id)
+        );
+
+        -- 5. ATTENDANCE REPORTS TABLE
         CREATE TABLE IF NOT EXISTS attendance_reports (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             secretary_id INTEGER NOT NULL,
@@ -44,7 +60,7 @@ try {
             FOREIGN KEY (reviewed_by) REFERENCES users(id)
         );
 
-        -- 4. STUB BATCHES TABLE (Module for PSAS Stub Generator)
+        -- 6. STUB BATCHES TABLE
         CREATE TABLE IF NOT EXISTS stub_batches (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             attendance_report_id INTEGER NOT NULL UNIQUE,
@@ -57,7 +73,7 @@ try {
             FOREIGN KEY (psas_staff_id) REFERENCES users(id)
         );
 
-        -- 5. MEAL STUBS / DISTRIBUTION TABLE
+        -- 7. MEAL STUBS / DISTRIBUTION TABLE
         CREATE TABLE IF NOT EXISTS meal_stubs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             batch_id INTEGER NOT NULL,
@@ -70,24 +86,35 @@ try {
         );
     ");
 
-    // Create default test accounts if the users table is empty
+    // Create default test accounts if users table is empty
     $userCount = (int) $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
-
     if ($userCount === 0) {
         $passwordHash = password_hash('123456', PASSWORD_DEFAULT);
-
-        $stmt = $pdo->prepare("
-            INSERT INTO users (full_name, username, password_hash, role)
-            VALUES (?, ?, ?, ?)
-        ");
-
+        $stmt = $pdo->prepare("INSERT INTO users (full_name, username, password_hash, role) VALUES (?, ?, ?, ?)");
         $stmt->execute(['Class Secretary', 'secretary', $passwordHash, 'secretary']);
         $stmt->execute(['PSAS Staff Member', 'psas', $passwordHash, 'psas']);
     }
 
-    echo "<h3>Database setup complete!</h3>";
-    echo "<p>All tables and columns have been successfully created.</p>";
-    echo "<p>Test accounts — <b>secretary</b> / <b>psas</b> (Password: <b>123456</b>).</p>";
+    // Insert sample test data for distribution if meal_stubs is empty
+    $stubCount = (int) $pdo->query("SELECT COUNT(*) FROM meal_stubs")->fetchColumn();
+    if ($stubCount === 0) {
+        // 1. Insert sample attendance report
+        $pdo->exec("INSERT INTO attendance_reports (secretary_id, course, year_level, section, report_date, present_count, status) 
+                    VALUES (1, 'BSIS', 2, '2A', '2026-11-11', 35, 'approved')");
+        
+        // 2. Insert sample stub batch
+        $pdo->exec("INSERT INTO stub_batches (attendance_report_id, psas_staff_id, stubs_issued, issue_date, status) 
+                    VALUES (1, 2, 3, '2026-11-11', 'issued')");
+
+        // 3. Insert sample meal stubs
+        $pdo->exec("INSERT INTO meal_stubs (batch_id, stub_code, status) VALUES 
+                    (1, 'STUB-BSIS-2A-001', 'Unclaimed'),
+                    (1, 'STUB-BSIS-2A-002', 'Unclaimed'),
+                    (1, 'STUB-BSIS-2A-003', 'Distributed')");
+    }
+
+    echo "<h3>Database setup & sample seeding complete!</h3>";
+    echo "<p>Test stubs have been successfully added.</p>";
 
 } catch (PDOException $e) {
     http_response_code(500);

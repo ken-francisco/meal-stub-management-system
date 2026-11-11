@@ -1,26 +1,33 @@
-
 <?php
 require_once 'db.php';
 
-$sql = "SELECT
+// Kunin ang lahat ng stubs kasama ang student/section details
+$sql = "SELECT 
             ms.id,
             ms.stub_code,
             ms.status,
-            c.course_code,
-            yl.year_level,
-            s.section_name
+            ar.course,
+            ar.year_level,
+            ar.section AS section_name
         FROM meal_stubs ms
         LEFT JOIN stub_batches sb ON ms.batch_id = sb.id
-        LEFT JOIN attendance_reports ar ON sb.attendance_id = ar.id
-        LEFT JOIN sections s ON ar.section_id = s.id
-        LEFT JOIN courses c ON s.course_id = c.id
-        LEFT JOIN year_levels yl ON s.year_id = yl.id
+        LEFT JOIN attendance_reports ar ON sb.attendance_report_id = ar.id
         ORDER BY ms.id ASC";
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute();
-
 $stubs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Kalkulahin ang stats para sa Progress Header
+$totalStubs = count($stubs);
+$distributedCount = 0;
+foreach ($stubs as $s) {
+    if ($s['status'] === 'Distributed') {
+        $distributedCount++;
+    }
+}
+$remainingCount = $totalStubs - $distributedCount;
+$progressPercent = $totalStubs > 0 ? ($distributedCount / $totalStubs) * 100 : 0;
 ?>
 
 <!DOCTYPE html>
@@ -28,174 +35,222 @@ $stubs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Meal Stub Distribution</title>
-
+    <title>Meal Stub Distribution - LVCC System</title>
+    <link rel="stylesheet" href="style.css">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f6f9;
-            padding: 30px;
+        /* Karagdagang styling para sa Figma-matching distribution layout */
+        .progress-card {
+            background: var(--primary-blue);
+            color: white;
+            border-radius: 14px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(10, 37, 64, 0.15);
         }
-
-        .container {
-            max-width: 1100px;
-            margin: auto;
-            background: white;
-            padding: 25px;
-            border-radius: 10px;
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
         }
-
-        h2 {
-            color: #263b64;
+        .progress-bar-bg {
+            background: rgba(255, 255, 255, 0.2);
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
         }
-
-        table {
+        .progress-bar-fill {
+            background: var(--accent-yellow);
+            height: 100%;
+            width: <?= $progressPercent ?>%;
+            transition: width 0.4s ease;
+        }
+        .search-filter-container {
+            margin-bottom: 20px;
+        }
+        .search-input {
             width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
+            padding: 12px 16px 12px 40px;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 14px;
+            outline: none;
+            background: white url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="%2364748B" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>') no-repeat 14px center;
+            margin-bottom: 12px;
         }
-
-        th, td {
-            padding: 12px;
-            border-bottom: 1px solid #ddd;
-            text-align: left;
+        .filter-pills {
+            display: flex;
+            gap: 8px;
         }
-
-        th {
-            background: #263b64;
-            color: white;
-        }
-
-        .unclaimed {
-            color: #d97706;
-            font-weight: bold;
-        }
-
-        .distributed {
-            color: #16a34a;
-            font-weight: bold;
-        }
-
-        button {
-            background: #263b64;
-            color: white;
-            border: none;
-            padding: 9px 12px;
-            border-radius: 5px;
+        .pill {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
             cursor: pointer;
+            border: 1px solid var(--border-color);
+            background: white;
+            color: var(--text-muted);
+            transition: all 0.2s;
         }
-
-        button:disabled {
-            background: #999;
-            cursor: not-allowed;
+        .pill.active {
+            background: var(--primary-blue);
+            color: white;
+            border-color: var(--primary-blue);
         }
-
-        .message {
-            margin-top: 15px;
-            font-weight: bold;
+        .stub-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
-
-        .empty {
-            text-align: center;
-            padding: 20px;
+        .stub-item-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.01);
+        }
+        .stub-info h4 {
+            font-size: 15px;
+            color: var(--primary-blue);
+            margin-bottom: 2px;
+        }
+        .stub-info p {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .status-badge {
+            font-size: 12px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 12px;
+        }
+        .status-badge.distributed {
+            background: #DEF7EC;
+            color: #03543F;
+        }
+        .status-badge.unclaimed {
+            background: #FEF08A;
+            color: #854D0E;
         }
     </style>
 </head>
-
 <body>
 
-<div class="container">
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="brand">
+            <span>LVCC <small style="font-weight: normal; color: #64748B;">Meal Stub System</small></span>
+        </div>
+        <a href="secretary_dashboard.php" class="btn-link" style="margin-top:0;">&lsaquo; Back to Dashboard</a>
+    </nav>
 
-    <h2>Meal Stub Distribution Tracker</h2>
+    <main class="app-container" style="max-width: 800px;">
+        
+        <!-- Page Title -->
+        <header class="page-header" style="margin-bottom: 16px;">
+            <span class="role-tag">DISTRIBUTION MODULE</span>
+            <h1 class="greeting" style="font-size: 22px;">Meal Stub Distribution Tracker</h1>
+        </header>
 
-    <p>Monitor and manage the distribution of meal stubs to students.</p>
+        <!-- Figma Progress Card -->
+        <div class="progress-card">
+            <div class="progress-header">
+                <div>
+                    <span style="font-size: 12px; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.5px;">Distribution progress</span>
+                    <div style="font-size: 20px; font-weight: 800; margin-top: 2px;">
+                        <?= $distributedCount ?> of <?= $totalStubs ?> distributed
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <span style="font-size: 24px; font-weight: 800; color: var(--accent-yellow);"><?= $remainingCount ?></span>
+                    <div style="font-size: 11px; opacity: 0.8;">Remaining</div>
+                </div>
+            </div>
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill"></div>
+            </div>
+        </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>Stub ID</th>
-                <th>Stub Code</th>
-                <th>Course</th>
-                <th>Year Level</th>
-                <th>Section</th>
-                <th>Status</th>
-                <th>Action</th>
-            </tr>
-        </thead>
+        <!-- Search & Filter Controls (Logic & Interactivity) -->
+        <div class="search-filter-container">
+            <input type="text" id="searchInput" class="search-input" placeholder="Search stub code, course, or section...">
+            <div class="filter-pills">
+                <button class="pill active" onclick="filterStubs('all', this)">All stubs</button>
+                <button class="pill" onclick="filterStubs('Unclaimed', this)">Unclaimed</button>
+                <button class="pill" onclick="filterStubs('Distributed', this)">Distributed</button>
+            </div>
+        </div>
 
-        <tbody>
-
-        <?php if (count($stubs) > 0): ?>
-
-            <?php foreach ($stubs as $stub): ?>
-
-                <tr data-stub-row="<?= (int)$stub['id'] ?>">
-
-                    <td><?= (int)$stub['id'] ?></td>
-
-                    <td><?= htmlspecialchars($stub['stub_code']) ?></td>
-
-                    <td><?= htmlspecialchars($stub['course_code'] ?? 'N/A') ?></td>
-
-                    <td><?= htmlspecialchars($stub['year_level'] ?? 'N/A') ?></td>
-
-                    <td><?= htmlspecialchars($stub['section_name'] ?? 'N/A') ?></td>
-
-                    <td class="status">
-                        <span class="<?= $stub['status'] === 'Distributed' ? 'distributed' : 'unclaimed' ?>">
-                            <?= htmlspecialchars($stub['status']) ?>
-                        </span>
-                    </td>
-
-                    <td class="action">
-
-                        <?php if ($stub['status'] === 'Unclaimed'): ?>
-
-                            <button
-                                class="distribute-btn"
-                                data-stub-id="<?= (int)$stub['id'] ?>">
-                                Mark as Distributed
-                            </button>
-
-                        <?php elseif ($stub['status'] === 'Distributed'): ?>
-
-                            <button disabled>
-                                Already Distributed
-                            </button>
-
-                        <?php else: ?>
-
-                            <button disabled>
+        <!-- Dynamic Stub List (Responsive & Interactive Cards) -->
+        <div class="stub-list" id="stubListContainer">
+            <?php if (count($stubs) > 0): ?>
+                <?php foreach ($stubs as $stub): ?>
+                    <div class="stub-item-card" data-status="<?= $stub['status'] ?>" data-search="<?= strtolower($stub['stub_code'] . ' ' . $stub['course'] . ' ' . $stub['section_name']) ?>">
+                        <div class="stub-info">
+                            <h4><?= htmlspecialchars($stub['stub_code']) ?></h4>
+                            <p><?= htmlspecialchars($stub['course'] ?? 'N/A') ?> · Year <?= htmlspecialchars($stub['year_level'] ?? 'N/A') ?> · Section <?= htmlspecialchars($stub['section_name'] ?? 'N/A') ?></p>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span class="status-badge <?= strtolower($stub['status']) ?>" id="status-text-<?= (int)$stub['id'] ?>">
                                 <?= htmlspecialchars($stub['status']) ?>
-                            </button>
+                            </span>
+                            
+                            <?php if ($stub['status'] === 'Unclaimed'): ?>
+                                <button class="btn-primary distribute-btn" data-stub-id="<?= (int)$stub['id'] ?>" style="padding: 6px 12px; font-size: 12px; width: auto;">
+                                    Mark as Distributed
+                                </button>
+                            <?php else: ?>
+                                <button disabled style="background: #E2E8F0; color: #94A3B8; border: none; padding: 6px 12px; border-radius: 8px; font-size: 12px; cursor: not-allowed;">
+                                    Done
+                                </button>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="card" style="text-align: center; color: var(--text-muted);">No meal stubs available.</div>
+            <?php endif; ?>
+        </div>
 
-                        <?php endif; ?>
+    </main>
 
-                    </td>
+    <!-- JavaScript para sa Real-time Search, Filtering, at AJAX Request -->
+    <script src="distribution.js"></script>
+    <script>
+        // Client-side Search Logic
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            let term = e.target.value.toLowerCase();
+            let cards = document.querySelectorAll('.stub-item-card');
+            cards.forEach(card => {
+                let text = card.getAttribute('data-search');
+                if (text.includes(term)) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
 
-                </tr>
+        // Filter Pills Logic
+        function filterStubs(status, btn) {
+            document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
 
-            <?php endforeach; ?>
-
-        <?php else: ?>
-
-            <tr>
-                <td colspan="7" class="empty">
-                    No meal stubs available.
-                </td>
-            </tr>
-
-        <?php endif; ?>
-
-        </tbody>
-    </table>
-
-    <p id="message" class="message"></p>
-
-</div>
-
-<script src="distribution.js"></script>
-
+            let cards = document.querySelectorAll('.stub-item-card');
+            cards.forEach(card => {
+                let cardStatus = card.getAttribute('data-status');
+                if (status === 'all' || cardStatus === status) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+    </script>
 </body>
 </html>
