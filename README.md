@@ -10,10 +10,10 @@ The **LVCC Meal Stub Management System** is a web-based application developed fo
 * Asmollo, Matthew
 * Cabibijan, Matt Febe
 * Ganal, Irrad
-* Matitol, Rovie
+* Matito, Rovie
 
 ## Basic Instructions for Running the Project
 When you land on the login page, log in based on your assigned position:
    * **Class Secretary:** Log in using your secretary credentials to access the Section Overview, submit daily attendance reports, and monitor the student distribution tracker.
    * **PSAS Staff:** Log in using your PSAS credentials to review and verify class attendance, issue meal stub batches, monitor inventory, and check reports.
-   * 
+     
