@@ -1,102 +1,127 @@
 <?php
-// secretary_dashboard.php
+session_start();
 require_once __DIR__ . '/db.php';
 
-// Kunin ang latest total enrollees at stats mula sa SQLite DB
-$totalEnrollees = 36; // Default demo value
-$todayPresent = null; // Set to null if not submitted yet
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'secretary') {
+    header("Location: login.php");
+    exit();
+}
 
-// Check if attendance report exists for today
-$today = date('Y-m-d');
-$stmt = $pdo->prepare("SELECT present_count, status FROM attendance_reports WHERE report_date = ? LIMIT 1");
-$stmt->execute([$today]);
-$report = $stmt->fetch(PDO::FETCH_ASSOC);
+$secName = (string)($_SESSION['name'] ?? $_SESSION['full_name'] ?? 'Maria Santos');
+$initials = 'MS';
 
-if ($report) {
-    $todayPresent = $report['present_count'];
+try {
+    $stmt = $pdo->prepare("SELECT * FROM attendance_reports WHERE secretary_id = ? ORDER BY id DESC LIMIT 5");
+    $stmt->execute([$_SESSION['user_id']]);
+    $reports = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $reports = [];
 }
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secretary Dashboard - LVCC Meal Stub System</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Class Secretary Dashboard | LVCC Meal Stub System</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --navy: #00205b; --blue: #003087; --yellow: #f2a900; --bg: #f4f6f9; --text: #1d2b3a; --muted: #687788; --border: #dde3ec; --green: #17835b; --red: #c84646; }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: "DM Sans", sans-serif; display: flex; }
+        .sidebar { width: 264px; background: var(--navy); color: white; position: fixed; height: 100vh; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; }
+        .brand { display: flex; align-items: center; gap: 12px; padding-bottom: 20px; border-bottom: 1px solid #ffffff17; }
+        .brand b { font-family: "Manrope"; font-size: 18px; display: block; }
+        .brand small { color: #b8cadd; font-size: 11px; }
+        .nav-label { color: #88a4bd; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .14em; margin: 25px 0 10px; }
+        nav a { display: block; color: #bfd0df; text-decoration: none; padding: 12px 15px; border-radius: 6px; font-weight: 500; font-size: 13px; margin-bottom: 5px; }
+        nav a.active, nav a:hover { background: var(--blue); color: white; }
+        .main-content { margin-left: 264px; padding: 40px; width: calc(100% - 264px); box-sizing: border-box; }
+        .top-banner { background: #fffdf0; border: 1px solid #fce8a6; padding: 18px 24px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
+        .kpi-card { background: white; padding: 24px; border-radius: 9px; border: 1px solid var(--border); box-shadow: 0 3px 12px rgba(0,0,0,0.03); }
+        .kpi-card p { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; margin: 0 0 8px 0; }
+        .kpi-card strong { font-size: 28px; font-family: "Manrope"; color: #14283b; }
+        .panel { background: white; border: 1px solid var(--border); border-radius: 9px; padding: 24px; box-shadow: 0 3px 12px rgba(0,0,0,0.03); }
+        .badge { padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+        .badge-approved { background: #def7ec; color: var(--green); }
+        .badge-returned { background: #fee2e2; color: var(--red); }
+        .btn-primary { background: var(--blue); color: white; padding: 12px 20px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; }
+    </style>
 </head>
 <body>
-
-    <!-- Header Navigation Bar -->
-    <nav class="navbar">
+    <aside class="sidebar">
         <div class="brand">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
-            <span>LVCC <small style="font-weight: normal; color: #64748B;">Meal Stub System</small></span>
-        </div>
-        <div class="avatar-chip">MS</div>
-    </nav>
-
-    <main class="app-container">
-        
-        <!-- User Welcome Section -->
-        <header class="page-header">
-            <span class="role-tag">BSIS · SECTION 3A</span>
-            <h1 class="greeting">Good morning, Maria</h1>
-            <p class="subtext">Here's your section's meal program status for today.</p>
-        </header>
-
-        <!-- Main Action CTA -->
-        <div style="margin-bottom: 20px;">
-            <a href="attendance_form.php" class="btn-primary">
-                <span>+</span> Record attendance
-            </a>
-        </div>
-
-        <!-- Alert Notification Card -->
-        <?php if ($todayPresent === null): ?>
-        <div class="card alert-card-warning">
-            <div style="display: flex; gap: 12px; align-items: flex-start;">
-                <span style="font-size: 20px;">⏱️</span>
-                <div>
-                    <strong style="color: #92400E; font-size: 15px;">Today's attendance is awaiting submission</strong>
-                    <p style="font-size: 13px; color: #B45309; margin-top: 4px;">Submit your class attendance before 9:30 AM to receive meal stubs on time.</p>
-                    <a href="attendance_form.php" class="btn-link">Submit now &rsaquo;</a>
-                </div>
-            </div>
-        </div>
-        <?php endif; ?>
-
-        <!-- Stat Card 1: Total Enrollees -->
-        <div class="card metric-card">
-            <div class="metric-icon">👥</div>
             <div>
-                <span class="subtext">Total class enrollees</span>
-                <div class="metric-value"><?= $totalEnrollees ?></div>
-                <span style="font-size: 12px; color: #94A3B8;">BSIS 3A · AY 2025–26</span>
+                <b>LVCC</b>
+                <small>Meal Stub System</small>
             </div>
         </div>
+        <span class="nav-label">Workspace</span>
+        <nav>
+            <a href="secretary_dashboard.php" class="active">Section Overview</a>
+            <a href="daily_attendance.php">Daily Attendance</a>
+            <a href="distribution_tracker.php">Distribution Tracker</a>
+        </nav>
+        <div style="margin-top: auto; border-top: 1px solid #ffffff19; padding-top: 15px;">
+            <b style="font-size: 12px; display: block;"><?= htmlspecialchars($secName) ?></b>
+            <small style="color: #9db4c8;">Secretary · BSIS 3A</small>
+            <a href="logout.php" style="color: #ff6b6b; font-size: 12px; margin-top: 8px; display: block; text-decoration: none;">Logout</a>
+        </div>
+    </aside>
 
-        <!-- Stat Card 2: Today's Present Count -->
-        <div class="card metric-card">
-            <div class="metric-icon" style="background: #FEF3C7; color: #D97706;">📋</div>
+    <div class="main-content">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px;">
             <div>
-                <span class="subtext">Today's present count</span>
-                <div class="metric-value">
-                    <?= $todayPresent !== null ? htmlspecialchars($todayPresent) : '—' ?>
-                </div>
-                <span style="font-size: 12px; color: #94A3B8;">
-                    <?= $todayPresent !== null ? 'Submitted for verification' : 'Not submitted yet' ?>
-                </span>
+                <span style="color: var(--blue); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em;">BSIS · SECTION 3A</span>
+                <h1 style="font-size: 28px; font-family: 'Manrope'; margin: 5px 0;">Good morning, Maria</h1>
+                <p style="color: var(--muted); font-size: 13px; margin: 0;">Here's your section's meal program status for today.</p>
+            </div>
+            <a href="daily_attendance.php" class="btn-primary">+ Record attendance</a>
+        </div>
+
+        <div class="top-banner">
+            <div>
+                <b>Today's attendance is awaiting submission</b>
+                <p style="font-size: 12px; color: var(--muted); margin: 3px 0 0;">Submit your class attendance before 9:30 AM to receive meal stubs on time.</p>
+            </div>
+            <a href="daily_attendance.php" style="color: var(--blue); font-weight: bold; font-size: 13px; text-decoration: none;">Submit now &rarr;</a>
+        </div>
+
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <p>Total class enrollees</p>
+                <strong>36</strong>
+                <span style="font-size: 11px; color: var(--muted); display: block; margin-top: 5px;">BSIS 3A · AY 2025–26</span>
+            </div>
+            <div class="kpi-card">
+                <p>Today's present count</p>
+                <strong>—</strong>
+                <span style="font-size: 11px; color: var(--muted); display: block; margin-top: 5px;">Not submitted yet</span>
+            </div>
+            <div class="kpi-card">
+                <p>Stubs on-hand</p>
+                <strong>2</strong>
+                <span style="font-size: 11px; color: var(--muted); display: block; margin-top: 5px;">34 distributed yesterday</span>
             </div>
         </div>
 
-        <!-- Quick Access to Distribution Module -->
-        <div class="card" style="margin-top: 24px;">
-            <h3 style="font-size: 16px; color: var(--primary-blue); margin-bottom: 6px;">Stub Distribution</h3>
-            <p class="subtext" style="margin-bottom: 14px;">Monitor and toggle student meal stub distribution status.</p>
-            <a href="distribution.php" class="btn-primary" style="background: #3B82F6;">View Distribution List</a>
+        <div class="panel">
+            <h3 style="font-family: 'Manrope'; font-size: 15px; margin-bottom: 4px;">Recent attendance</h3>
+            <p style="font-size: 12px; color: var(--muted); margin-bottom: 20px;">Your last five submissions</p>
+            
+            <?php if (empty($reports)): ?>
+                <p style="color: var(--muted); font-style: italic;">No attendance reports submitted yet.</p>
+            <?php else: ?>
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    <?php foreach ($reports as $r): ?>
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 12px 0;"><b><?= htmlspecialchars($r['report_date']) ?></b><br><small style="color:var(--muted)"><?= (int)$r['present_count'] ?> present · <?= (int)($r['absent_count'] ?? 0) ?> absent</small></td>
+                            <td style="text-align: right;"><span class="badge badge-<?= strtolower($r['status'] === 'Approved' ? 'approved' : 'returned') ?>"><?= htmlspecialchars($r['status'] ?? 'Pending') ?></span></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </table>
+            <?php endif; ?>
         </div>
-
-    </main>
-
+    </div>
 </body>
 </html>

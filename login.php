@@ -15,12 +15,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($user && password_verify($password, $user['password_hash'])) {
-            // Save user session
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['name'] = $user['name'];
             $_SESSION['role'] = $user['role'];
 
-            // Role-based redirection
             if ($user['role'] === 'secretary') {
                 header("Location: secretary_dashboard.php");
             } else if ($user['role'] === 'psas') {
@@ -37,73 +35,135 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Free Meal Stub System</title>
+    <title>Sign In | LVCC Meal Stub System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --navy: #00205b;
+            --blue: #003087;
+            --yellow: #f2a900;
+            --bg: #f4f6f9;
+            --text: #1d2b3a;
+            --muted: #687788;
+            --border: #dde3ec;
+        }
+        * { box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f6f9;
+            font-family: "DM Sans", sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
+            padding: 16px;
         }
         .login-card {
             background: #ffffff;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            width: 320px;
+            border: 1px solid var(--border);
+            border-top: 4px solid var(--navy);
+            padding: 32px 28px;
+            border-radius: 10px;
+            box-shadow: 0 8px 25px #072d5014;
+            width: 100%;
+            max-width: 360px;
+        }
+        .brand-logo {
+            width: 54px;
+            height: 54px;
+            margin: 0 auto 14px;
+            display: grid;
+            place-items: center;
+        }
+        .brand-logo img {
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            object-fit: cover;
+            box-shadow: 0 3px 10px #00133130;
+        }
+        .brand-fallback {
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            background: var(--yellow);
+            color: var(--navy);
+            font: 800 18px "Manrope", sans-serif;
+            display: grid;
+            place-items: center;
         }
         .login-card h2 {
-            margin-top: 0;
-            margin-bottom: 20px;
-            color: #1a202c;
+            font-family: "Manrope", sans-serif;
+            margin: 0 0 4px;
+            color: var(--navy);
+            font-size: 20px;
+            font-weight: 800;
             text-align: center;
         }
-        .form-group {
-            margin-bottom: 16px;
+        .subtitle {
+            text-align: center;
+            color: var(--muted);
+            font-size: 12px;
+            margin: 0 0 22px;
         }
+        .form-group { margin-bottom: 15px; }
         .form-group label {
             display: block;
             margin-bottom: 6px;
-            color: #4a5568;
-            font-size: 14px;
+            color: #3a4d5f;
+            font-size: 11px;
+            font-weight: 700;
         }
         .form-group input {
             width: 100%;
-            padding: 10px;
-            box-sizing: border-box;
-            border: 1px solid #cbd5e0;
-            border-radius: 4px;
-            font-size: 14px;
+            height: 40px;
+            padding: 0 12px;
+            border: 1px solid #d9e1e8;
+            border-radius: 6px;
+            font: inherit;
+            font-size: 13px;
+            outline: none;
         }
-        .btn {
+        .form-group input:focus {
+            border-color: var(--blue);
+            box-shadow: 0 0 0 3px #0b5a9d12;
+        }
+        .button {
             width: 100%;
-            background-color: #2b6cb0;
+            height: 41px;
+            border-radius: 9px;
+            border: 1px solid var(--blue);
+            background: var(--blue);
             color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 4px;
+            font: 700 13px "DM Sans", sans-serif;
             cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
+            box-shadow: 0 4px 0 #001b4d, 0 7px 14px #00205b22;
+            transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
         }
-        .btn:hover {
-            background-color: #2c5282;
+        .button:hover {
+            background: #0741a5;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 0 #001b4d, 0 10px 18px #00205b2d;
+        }
+        .button:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 #001b4d, 0 3px 7px #00205b20;
         }
         .error-message {
-            background-color: #fed7d7;
-            color: #9b2c2c;
-            padding: 8px;
-            border-radius: 4px;
-            font-size: 13px;
+            background-color: #fbeaea;
+            color: #a53d3d;
+            border: 1px solid #f3c4c4;
+            padding: 9px 12px;
+            border-radius: 6px;
+            font-size: 12px;
             margin-bottom: 14px;
             text-align: center;
         }
@@ -111,8 +171,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
     <div class="login-card">
-        <h2>Meal Stub System</h2>
-        
+        <div class="brand-logo">
+            <img src="assets/lvcc-logo.png" alt="LVCC Logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';">
+            <div class="brand-fallback" style="display:none;">LV</div>
+        </div>
+        <h2>LVCC Meal Stub System</h2>
+        <p class="subtitle">Sign in to continue</p>
+
         <?php if (!empty($error)): ?>
             <div class="error-message"><?= htmlspecialchars($error); ?></div>
         <?php endif; ?>
@@ -126,8 +191,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <label for="password">Password</label>
                 <input type="password" id="password" name="password" required>
             </div>
-            <button type="submit" class="btn">Login</button>
+            <button type="submit" class="button">Sign In</button>
         </form>
     </div>
 </body>
 </html>
+

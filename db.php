@@ -1,11 +1,21 @@
 <?php
-// db.php - Database connection using SQLite via PDO
-$db_file = __DIR__ . '/database.sqlite';
+// database.php (or db.php)
+
+// Define the path to the SQLite database file inside the storage directory
+$dbPath = __DIR__ . '/storage/database.sqlite';
 
 try {
-    $pdo = new PDO("sqlite:" . $db_file);
+    // Establish a secure PDO connection to SQLite
+    $pdo = new PDO('sqlite:' . $dbPath);
+    
+    // Set PDO error mode to exception to catch errors smoothly
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    
+    // Enable foreign key constraints for SQLite data integrity
+    $pdo->exec('PRAGMA foreign_keys = ON;');
+
 } catch (PDOException $e) {
-    die("Database connection failed: " . $e->getMessage());
+    http_response_code(500);
+    exit("Database connection failed: " . htmlspecialchars($e->getMessage()));
 }
 ?>
