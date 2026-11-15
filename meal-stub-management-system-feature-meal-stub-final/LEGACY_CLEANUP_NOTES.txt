@@ -1,0 +1,23 @@
+Legacy cleanup - 2026-11-13
+
+Official workflows:
+- Attendance submission: daily_attendance.php
+- Stub distribution: distribution_tracker.php
+
+Retired legacy UI routes:
+- attendance_form.php -> redirects authenticated Secretaries to daily_attendance.php
+- attendance.php -> redirects authenticated Secretaries to daily_attendance.php
+- distribution.php -> redirects authenticated Secretaries to distribution_tracker.php
+
+Retired legacy APIs:
+- attendance_api.php -> HTTP 410 JSON response
+- update_status.php -> HTTP 410 JSON response
+
+Orphaned scripts removed from the active project root:
+- attendance.js
+- distribution.js
+
+Original legacy PHP and JavaScript files were preserved separately in
+meal-stub-legacy-originals-2026-11-13.zip.
+
+No database schema, database file, or existing database records were intentionally modified.
